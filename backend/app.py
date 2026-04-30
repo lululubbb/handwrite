@@ -97,6 +97,7 @@ def method_not_allowed(error):
         'message': '方法不允许'
     }), 405
 
+
 def create_tables():
     """创建数据库表"""
     with app.app_context():
@@ -107,4 +108,4 @@ def create_tables():
 
 if __name__ == '__main__':
     create_tables()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
