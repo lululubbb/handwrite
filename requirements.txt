@@ -1,0 +1,38 @@
+<<<<<<< HEAD
+# 核心Web框架
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SQLAlchemy==3.1.1
+Werkzeug==2.3.7
+sqlalchemy==2.0.19
+
+# 部署工具
+gunicorn==21.2.0
+python-dotenv==1.0.0
+
+# 图像处理（无冲突版本）
+opencv-python==4.8.1.78
+Pillow==10.0.1
+matplotlib==3.8.4
+
+# PaddleOCR 可正常下载的稳定版（修复版本报错）
+paddlepaddle==2.6.2
+paddleocr==2.8.0
+
+# 兼容所有库的NumPy
+numpy==1.26.4
+=======
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SQLAlchemy==3.1.1
+paddlepaddle>=2.6.0
+paddleocr>=2.8.0
+numpy==1.24.3
+opencv-python==4.8.1.78
+Pillow==10.0.1
+matplotlib==3.7.2
+sqlalchemy==2.0.19
+Werkzeug==2.3.7
+gunicorn==21.2.0
+python-dotenv==1.0.0
+>>>>>>> c3921a9d5b68613776360a1327f9c5d1df6972d8
