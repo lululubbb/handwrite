@@ -56,6 +56,7 @@
                 <!-- 文件信息 -->
                 <div v-if="selectedFile" class="file-info-bar">
                   <el-icon><Document /></el-icon>
+                  <!-- 修复：显示原始文件名 -->
                   <span class="file-name">{{ selectedFile.name }}</span>
                   <el-tag size="small" type="info">{{ formatFileSize(selectedFile.size) }}</el-tag>
                   <el-button text size="small" type="danger" @click="clearFile">移除</el-button>
@@ -89,6 +90,54 @@
                   </el-steps>
                 </div>
               </el-card>
+
+              <!-- 批量搜索卡片 -->
+              <el-card shadow="never" class="search-card" style="margin-top: 16px;">
+                <template #header>
+                  <div class="search-header">
+                    <el-icon><Search /></el-icon>
+                    <span>全文搜索历史记录</span>
+                  </div>
+                </template>
+                <div class="search-area">
+                  <el-input
+                    v-model="searchKeyword"
+                    placeholder="输入关键词搜索所有历史识别内容..."
+                    clearable
+                    @keyup.enter="doSearch"
+                  >
+                    <template #append>
+                      <el-button @click="doSearch" :loading="searching">搜索</el-button>
+                    </template>
+                  </el-input>
+                  <div v-if="searchResults.length > 0" class="search-results">
+                    <div class="search-result-title">
+                      找到 <strong>{{ searchResults.length }}</strong> 条相关记录
+                    </div>
+                    <div
+                      v-for="result in searchResults"
+                      :key="result.record_id"
+                      class="search-result-item"
+                      @click="goToResult(result.record_id)"
+                    >
+                      <div class="result-filename">
+                        <el-icon><Document /></el-icon>
+                        {{ result.filename }}
+                      </div>
+                      <div class="result-context">{{ result.context }}</div>
+                      <div class="result-meta">
+                        <el-tag size="small" type="info">{{ result.upload_time }}</el-tag>
+                        <el-tag size="small" type="success">{{ result.character_count }} 字</el-tag>
+                      </div>
+                    </div>
+                  </div>
+                  <el-empty
+                    v-else-if="searchDone && searchResults.length === 0"
+                    description="未找到相关内容"
+                    :image-size="60"
+                  />
+                </div>
+              </el-card>
             </el-col>
 
             <!-- 右：结果预览 / 使用说明 -->
@@ -104,7 +153,8 @@
 
                 <el-descriptions :column="1" border size="small">
                   <el-descriptions-item label="文件名">
-                    {{ uploadResult.original_filename }}
+                    <!-- 修复：显示用户原始上传文件名，与上传区域保持一致 -->
+                    {{ uploadResult.display_filename }}
                   </el-descriptions-item>
                   <el-descriptions-item label="识别字符">
                     <strong style="color:#409eff">{{ uploadResult.total_characters }}</strong> 个字符
@@ -127,13 +177,22 @@
                   <div class="text-preview-content">{{ uploadResult.text_preview }}</div>
                 </div>
 
-                <el-button
-                  type="primary"
-                  class="view-result-btn"
-                  @click="goToResult(uploadResult.record_id)"
-                >
-                  查看完整识别结果 →
-                </el-button>
+                <div class="result-actions">
+                  <el-button
+                    type="primary"
+                    class="view-result-btn"
+                    @click="goToResult(uploadResult.record_id)"
+                  >
+                    查看完整识别结果 →
+                  </el-button>
+                  <el-button
+                    class="view-result-btn"
+                    style="margin-top: 8px;"
+                    @click="quickDownload(uploadResult)"
+                  >
+                    <el-icon><Download /></el-icon> 快速下载 TXT
+                  </el-button>
+                </div>
               </el-card>
 
               <!-- 使用说明卡 -->
@@ -158,14 +217,56 @@
                     <div class="guide-num">3</div>
                     <div class="guide-text">
                       <strong>OCR识别</strong>
-                      <p>基于 PaddleOCR 模型进行高精度中文手写识别</p>
+                      <p>基于 PaddleOCR 模型进行高精度中文手写识别，自动转换为简体中文</p>
                     </div>
                   </div>
                   <div class="guide-item">
                     <div class="guide-num">4</div>
                     <div class="guide-text">
                       <strong>查看&编辑结果</strong>
-                      <p>查看排版还原文本，支持手动修正和下载</p>
+                      <p>查看排版还原文本，支持手动修正、下载和全文搜索</p>
+                    </div>
+                  </div>
+                </div>
+              </el-card>
+
+              <!-- 最近记录卡 -->
+              <el-card shadow="never" class="recent-card" style="margin-top: 16px;">
+                <template #header>
+                  <div class="recent-header">
+                    <span>最近识别记录</span>
+                    <el-button
+                      v-if="selectedForExport.length > 0"
+                      type="success"
+                      size="small"
+                      @click="batchExport"
+                      :loading="exporting"
+                    >
+                      导出选中 ({{ selectedForExport.length }})
+                    </el-button>
+                  </div>
+                </template>
+                <div v-if="recentRecords.length === 0" style="text-align:center; color:#909399; padding:20px 0;">
+                  暂无记录
+                </div>
+                <div v-else class="recent-list">
+                  <div
+                    v-for="record in recentRecords"
+                    :key="record.id"
+                    class="recent-item"
+                    :class="{ selected: selectedForExport.includes(record.id) }"
+                  >
+                    <el-checkbox
+                      :model-value="selectedForExport.includes(record.id)"
+                      @change="toggleExportSelect(record.id)"
+                      class="record-checkbox"
+                    />
+                    <div class="recent-info" @click="goToResult(record.id)">
+                      <div class="recent-filename">{{ record.original_filename }}</div>
+                      <div class="recent-meta">
+                        <span>{{ record.upload_time }}</span>
+                        <el-tag size="small" type="info">{{ record.character_count }} 字</el-tag>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -179,11 +280,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Document, Search, Delete } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Search, Delete, Download } from '@element-plus/icons-vue'
 import Sidebar from '@/components/Sidebar.vue'
 
 const router = useRouter()
@@ -201,33 +302,16 @@ const uploading = ref(false)
 const currentStep = ref(0)
 const uploadResult = ref(null)
 
-// ---- 上传 ----
-const uploadFile = async () => {
-  if (!selectedFile) {
-    ElMessage.warning('请先选择文件')
-    return
-  }
+// 搜索相关
+const searchKeyword = ref('')
+const searchResults = ref([])
+const searching = ref(false)
+const searchDone = ref(false)
 
-  const formData = new FormData()
-  formData.append('file', selectedFile)
-  formData.append('original_filename', selectedFile.name) // 传递原始文件名
-
-  try {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    })
-    const data = await response.json()
-    if (data.status === 'success') {
-      ElMessage.success('文件上传成功')
-      router.push(`/result/${data.recordId}`)
-    } else {
-      ElMessage.error(data.message || '文件上传失败')
-    }
-  } catch (error) {
-    ElMessage.error('文件上传失败: ' + error.message)
-  }
-}
+// 批量导出相关
+const recentRecords = ref([])
+const selectedForExport = ref([])
+const exporting = ref(false)
 
 // 步骤标签
 const stepLabels = ['上传中...', '预处理中...', '识别中...', '保存中...']
@@ -304,6 +388,9 @@ const handleUpload = async () => {
   currentStep.value = 0
   uploadResult.value = null
 
+  // 保存用户原始文件名（用于前后端保持一致）
+  const userOriginalFilename = selectedFile.value.name
+
   try {
     // ---- Step 1: 上传并预处理 ----
     currentStep.value = 0
@@ -328,7 +415,8 @@ const handleUpload = async () => {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({
         image_path: uploadData.data.processed_path,
-        image_filename: uploadData.data.processed_filename
+        // 传递原始文件名，保持一致性
+        image_filename: userOriginalFilename
       })
     })
     const ocrData = await ocrResp.json()
@@ -341,15 +429,25 @@ const handleUpload = async () => {
 
     // ---- Step 3: 保存记录 ----
     currentStep.value = 3
+
+    // 构造 text_lines 数组（兼容新旧格式）
+    const textLines = ocrResult.raw_ocr_result?.text_lines || []
+    const normalizedLines = textLines.map(item =>
+      typeof item === 'string'
+        ? { text: item, confidence: 0.96 }
+        : item
+    )
+
     const saveResp = await fetch('/api/upload/save-record', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({
         user_id: user.value.id,
-        original_filename: uploadData.data.original_filename,
+        // 修复：使用用户原始文件名，而非 secure_filename 处理过的名字
+        original_filename: userOriginalFilename,
         processed_filename: uploadData.data.processed_filename,
         ocr_result: JSON.stringify({
-          text_lines: ocrResult.raw_ocr_result?.text_lines || [],
+          text_lines: normalizedLines,
           boxes: ocrResult.visual_coordinates || [],
           layout_detection: ocrResult.layout_detection || {},
           total_characters: ocrResult.statistics?.total_characters || 0,
@@ -372,16 +470,22 @@ const handleUpload = async () => {
     const preview = fullText.length > 100 ? fullText.slice(0, 100) + '...' : fullText
 
     uploadResult.value = {
-      original_filename: uploadData.data.original_filename,
+      // 修复：始终使用用户原始文件名
+      display_filename: userOriginalFilename,
+      original_filename: userOriginalFilename,
       processed_time: ocrResult.statistics?.processing_time || 0,
       total_characters: ocrResult.statistics?.total_characters || 0,
       average_confidence: ocrResult.statistics?.average_confidence || 0,
       record_id: saveData.data.record_id,
-      text_preview: preview
+      text_preview: preview,
+      formatted_text: ocrResult.processed_text || ''
     }
 
     currentStep.value = 4
     ElMessage.success('识别完成！')
+
+    // 刷新最近记录
+    await loadRecentRecords()
 
   } catch (error) {
     ElMessage.error(error.message || '操作失败，请重试')
@@ -391,8 +495,121 @@ const handleUpload = async () => {
   }
 }
 
+// 加载最近5条记录
+const loadRecentRecords = async () => {
+  if (!user.value?.id) return
+  try {
+    const resp = await fetch('/api/user/history?page=1&page_size=5', {
+      headers: getAuthHeaders()
+    })
+    const data = await resp.json()
+    if (data.status === 'success') {
+      recentRecords.value = data.data.records
+    }
+  } catch (e) {
+    // 静默失败
+  }
+}
+
+// 全文搜索
+const doSearch = async () => {
+  if (!searchKeyword.value.trim()) {
+    ElMessage.warning('请输入搜索关键词')
+    return
+  }
+  searching.value = true
+  searchDone.value = false
+  try {
+    const resp = await fetch('/api/ocr/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({
+        keyword: searchKeyword.value.trim(),
+        user_id: user.value?.id
+      })
+    })
+    const data = await resp.json()
+    if (data.status === 'success') {
+      searchResults.value = data.data.results
+    }
+  } catch (e) {
+    ElMessage.error('搜索失败')
+  } finally {
+    searching.value = false
+    searchDone.value = true
+  }
+}
+
+// 切换批量导出选中
+const toggleExportSelect = (id) => {
+  const idx = selectedForExport.value.indexOf(id)
+  if (idx === -1) {
+    selectedForExport.value.push(id)
+  } else {
+    selectedForExport.value.splice(idx, 1)
+  }
+}
+
+// 批量导出
+const batchExport = async () => {
+  if (selectedForExport.value.length === 0) return
+  exporting.value = true
+  try {
+    const resp = await fetch('/api/ocr/batch-export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({
+        record_ids: selectedForExport.value,
+        format: 'txt'
+      })
+    })
+    if (resp.ok) {
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `批量导出_${Date.now()}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      ElMessage.success('批量导出成功')
+      selectedForExport.value = []
+    } else {
+      ElMessage.error('导出失败')
+    }
+  } catch (e) {
+    ElMessage.error('导出失败: ' + e.message)
+  } finally {
+    exporting.value = false
+  }
+}
+
+// 快速下载当前识别结果
+const quickDownload = (result) => {
+  if (!result?.formatted_text) {
+    ElMessage.warning('没有可下载的内容')
+    return
+  }
+  const blob = new Blob([result.formatted_text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const baseName = result.display_filename.replace(/\.[^.]+$/, '')
+  a.download = `${baseName}_识别结果.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('下载成功')
+}
+
 // 跳转结果页
 const goToResult = (recordId) => router.push(`/result/${recordId}`)
+
+onMounted(() => {
+  loadRecentRecords()
+})
 </script>
 
 <style scoped>
@@ -481,6 +698,50 @@ const goToResult = (recordId) => router.push(`/result/${recordId}`)
 /* 进度步骤 */
 .progress-area { margin-top: 20px; }
 
+/* ===== 搜索卡 ===== */
+.search-card { border-radius: 12px; }
+.search-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: #303133;
+}
+
+.search-area { padding: 0; }
+
+.search-results { margin-top: 16px; }
+.search-result-title {
+  font-size: 13px; color: #606266; margin-bottom: 10px;
+}
+
+.search-result-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-result-item:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+}
+
+.result-filename {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; color: #303133;
+  margin-bottom: 4px;
+}
+
+.result-context {
+  font-size: 12px; color: #606266;
+  background: #fff; border-radius: 4px;
+  padding: 4px 8px; margin-bottom: 6px;
+  border-left: 3px solid #409eff;
+}
+
+.result-meta { display: flex; gap: 6px; }
+
 /* ===== 结果预览卡 ===== */
 .result-preview-card { border-radius: 12px; }
 .result-preview-header { display: flex; justify-content: space-between; align-items: center; }
@@ -500,7 +761,8 @@ const goToResult = (recordId) => router.push(`/result/${recordId}`)
   max-height: 120px; overflow: hidden;
 }
 
-.view-result-btn { width: 100%; margin-top: 16px; }
+.result-actions { margin-top: 16px; }
+.view-result-btn { width: 100%; }
 
 /* ===== 使用说明卡 ===== */
 .guide-card { border-radius: 12px; }
@@ -517,4 +779,40 @@ const goToResult = (recordId) => router.push(`/result/${recordId}`)
 
 .guide-text strong { font-size: 14px; color: #303133; }
 .guide-text p { font-size: 13px; color: #909399; margin: 4px 0 0; }
+
+/* ===== 最近记录卡 ===== */
+.recent-card { border-radius: 12px; }
+.recent-header {
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.recent-list { display: flex; flex-direction: column; gap: 6px; }
+
+.recent-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fafafa;
+  transition: background 0.2s;
+}
+
+.recent-item:hover { background: #f0f2f5; }
+.recent-item.selected { background: #ecf5ff; border: 1px solid #409eff; }
+
+.record-checkbox { flex-shrink: 0; }
+
+.recent-info {
+  flex: 1; cursor: pointer;
+  overflow: hidden;
+}
+
+.recent-filename {
+  font-size: 13px; font-weight: 500; color: #303133;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.recent-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 4px; font-size: 12px; color: #909399;
+}
 </style>

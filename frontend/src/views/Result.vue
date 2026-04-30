@@ -18,6 +18,7 @@
               </el-button>
               <h2 class="page-title">识别结果</h2>
               <el-tag v-if="recordInfo" type="success" size="small" class="file-tag">
+                <!-- 修复：显示原始文件名 -->
                 {{ recordInfo.original_filename }}
               </el-tag>
             </div>
@@ -32,8 +33,8 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
-                    <el-dropdown-item command="txt">TXT</el-dropdown-item>
+                    <el-dropdown-item command="markdown">Markdown (.md)</el-dropdown-item>
+                    <el-dropdown-item command="txt">纯文本 (.txt)</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -66,7 +67,7 @@
               <div class="stat-card">
                 <div class="stat-icon lines-icon"><el-icon><List /></el-icon></div>
                 <div class="stat-body">
-                  <div class="stat-num">{{ statsData.text_lines_count || 0 }}</div>
+                  <div class="stat-num">{{ ocrLines.length }}</div>
                   <div class="stat-lbl">文本行数</div>
                 </div>
               </div>
@@ -141,13 +142,12 @@
                     <el-tag size="small" type="info" class="ml-8">共 {{ formattedText.length }} 字符</el-tag>
                   </div>
                   <div class="formatted-content" v-if="formattedText">
-                    <!-- 🔥 唯一修改的地方：支持表格渲染 -->
                     <div class="formatted-pre markdown-body" v-html="renderMarkdown(formattedText)"></div>
                   </div>
                   <el-empty v-else description="暂无排版文本" />
 
                   <!-- 布局检测信息 -->
-                  <div v-if="layoutData" class="layout-summary">
+                  <div v-if="layoutData && hasLayoutInfo" class="layout-summary">
                     <div class="layout-title">检测到的排版元素</div>
                     <el-row :gutter="12">
                       <el-col :span="8" v-if="layoutData.headings && layoutData.headings.length">
@@ -281,20 +281,6 @@
                       </span>
                     </template>
                   </el-table-column>
-                  <el-table-column label="区域宽度" width="90">
-                    <template #default="{ row }">
-                      <span v-if="row.coordinates && row.coordinates[0] && row.coordinates[1]">
-                        {{ Math.abs(row.coordinates[1][0] - row.coordinates[0][0]) }}px
-                      </span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="区域高度" width="90">
-                    <template #default="{ row }">
-                      <span v-if="row.coordinates && row.coordinates[0] && row.coordinates[3]">
-                        {{ Math.abs(row.coordinates[3][1] - row.coordinates[0][1]) }}px
-                      </span>
-                    </template>
-                  </el-table-column>
                 </el-table>
               </div>
             </el-tab-pane>
@@ -350,7 +336,7 @@ import { marked } from 'marked'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   ArrowLeft, CopyDocument, Download, Edit, Check, Refresh,
   Document, List, TrendCharts, Timer, EditPen
@@ -368,14 +354,14 @@ const editMode = ref(false)
 
 // 数据
 const recordInfo = ref(null)
-const ocrLines = ref([])
+const ocrLines = ref([])      // 始终是 [{text, confidence}] 格式
 const formattedText = ref('')
 const editableText = ref('')
 const layoutData = ref(null)
 const coordinatesData = ref([])
 const statsData = ref({})
 
-// 渲染表格
+// 渲染 Markdown
 const renderMarkdown = (text) => {
   if (!text) return ''
   return marked.parse(text)
@@ -394,6 +380,13 @@ const confPercent = computed(() => {
 const highConfCount = computed(() => ocrLines.value.filter(l => l.confidence >= 0.9).length)
 const midConfCount = computed(() => ocrLines.value.filter(l => l.confidence >= 0.7 && l.confidence < 0.9).length)
 const lowConfCount = computed(() => ocrLines.value.filter(l => l.confidence < 0.7).length)
+
+// 是否有布局信息
+const hasLayoutInfo = computed(() => {
+  if (!layoutData.value) return false
+  const ld = layoutData.value
+  return (ld.headings?.length || 0) + (ld.paragraphs?.length || 0) + (ld.lists?.length || 0) > 0
+})
 
 // ---- 获取数据 ----
 const getResultData = async () => {
@@ -428,7 +421,15 @@ const getResultData = async () => {
       }
 
       if (ocrObj) {
-        ocrLines.value = ocrObj.text_lines || []
+        // 兼容两种格式：旧格式(string[]) 和 新格式({text, confidence}[])
+        const rawLines = ocrObj.text_lines || []
+        ocrLines.value = rawLines.map(item => {
+          if (typeof item === 'string') {
+            return { text: item, confidence: 0.96 }
+          }
+          return { text: item.text || '', confidence: item.confidence ?? 0.96 }
+        }).filter(l => l.text.trim())
+
         coordinatesData.value = ocrObj.boxes || []
         layoutData.value = ocrObj.layout_detection || null
 
@@ -475,7 +476,6 @@ const cancelEdit = () => {
 const saveEdit = async () => {
   formattedText.value = editableText.value
   editMode.value = false
-  // 可选：持久化到后端
   try {
     await fetch(`/api/user/history/${recordId.value}/update-text`, {
       method: 'PUT',
@@ -509,7 +509,7 @@ const copyText = () => {
   navigator.clipboard.writeText(txt).then(() => ElMessage.success('复制成功'))
 }
 
-// 下载选择器
+// 下载
 const handleDownload = (type) => {
   const content = editMode.value ? editableText.value : formattedText.value
   if (!content) {
@@ -517,33 +517,30 @@ const handleDownload = (type) => {
     return
   }
 
-  // 修复：确保使用文件名前缀生成下载文件名
-  const fullName = recordInfo.value.original_filename || '未命名文件'
+  const fullName = recordInfo.value?.original_filename || '未命名文件'
   const fileName = fullName.substring(0, fullName.lastIndexOf('.')) || fullName
   const saveName = `${fileName}_识别结果`
 
-  // 下载逻辑
   if (type === 'txt') {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = saveName + '.txt'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    triggerDownload(blob, saveName + '.txt')
     ElMessage.success('TXT 下载成功')
   } else if (type === 'markdown') {
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = saveName + '.md'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    triggerDownload(blob, saveName + '.md')
     ElMessage.success('Markdown 下载成功')
   }
+}
+
+const triggerDownload = (blob, filename) => {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 const goToUpload = () => router.push('/upload')
@@ -702,7 +699,13 @@ onMounted(() => { getResultData() })
   line-height: 2;
   color: #303133;
   margin: 0;
+  max-height: calc(100vh - 350px);
+  overflow-y: auto;
+  padding-right: 8px;
 }
+
+.formatted-pre::-webkit-scrollbar { width: 6px; }
+.formatted-pre::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 3px; }
 
 .layout-summary {
   margin-top: 16px;
@@ -719,26 +722,8 @@ onMounted(() => { getResultData() })
   font-weight: 600;
 }
 
-/* 识别内容区域：超出高度自动出现滚动条 */
-.formatted-pre {
-  max-height: calc(100vh - 350px);
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-/* 美化滚动条（ */
-.formatted-pre::-webkit-scrollbar {
-  width: 6px;
-}
-.formatted-pre::-webkit-scrollbar-thumb {
-  background: #c0c4cc;
-  border-radius: 3px;
-}
-
 /* 表格样式 */
-.markdown-body {
-  line-height: 1.8;
-}
+.markdown-body { line-height: 1.8; }
 .markdown-body table {
   border-collapse: collapse;
   width: 100%;

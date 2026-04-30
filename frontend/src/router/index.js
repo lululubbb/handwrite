@@ -13,6 +13,7 @@ const Home = () => import('@/views/Home.vue')
 const Upload = () => import('@/views/Upload.vue')
 const Result = () => import('@/views/Result.vue')
 const Profile = () => import('@/views/Profile.vue')
+const Statistics = () => import('@/views/Statistics.vue')
 const AdminDashboard = () => import('@/views/AdminDashboard.vue')
 const AdminUsers = () => import('@/views/AdminUsers.vue')
 const AdminRecords = () => import('@/views/AdminRecords.vue')
@@ -54,6 +55,12 @@ const routes = [
     path: '/profile',
     name: 'profile',
     component: Profile,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/statistics',
+    name: 'statistics',
+    component: Statistics,
     meta: { requiresAuth: true }
   },
   {
