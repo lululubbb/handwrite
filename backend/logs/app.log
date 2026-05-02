@@ -2328,3 +2328,25 @@ Please check whether there is any other process using GPU 0.
 2026-04-30 16:38:13,244 - werkzeug - INFO - 127.0.0.1 - - [30/Apr/2026 16:38:13] "POST /api/upload/save-record HTTP/1.1" 200 -
 2026-04-30 16:38:13,254 - werkzeug - INFO - 127.0.0.1 - - [30/Apr/2026 16:38:13] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
 2026-04-30 16:38:18,045 - werkzeug - INFO - 127.0.0.1 - - [30/Apr/2026 16:38:18] "GET /api/user/history/145 HTTP/1.1" 200 -
+2026-05-01 12:17:29,023 - __main__ - INFO - Êý¾Ý¿â±í´´½¨³É¹¦
+2026-05-01 12:17:29,049 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.168:5000
+2026-05-01 12:17:29,052 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-01 12:17:50,276 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:17:50] "[33mGET /api/user/history/145 HTTP/1.1[0m" 404 -
+2026-05-01 12:18:01,177 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:01] "POST /api/user/login HTTP/1.1" 200 -
+2026-05-01 12:18:04,319 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:04] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
+2026-05-01 12:18:10,522 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:10] "GET /api/user/history?page=1&page_size=10 HTTP/1.1" 200 -
+2026-05-01 12:18:12,692 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:12] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
+2026-05-01 12:18:16,852 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:16] "POST /api/upload/preprocess HTTP/1.1" 200 -
+2026-05-01 12:18:22,500 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:22] "POST /api/ocr/process HTTP/1.1" 200 -
+2026-05-01 12:18:22,528 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:22] "POST /api/upload/save-record HTTP/1.1" 200 -
+2026-05-01 12:18:22,540 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:22] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
+2026-05-01 12:18:26,347 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:26] "GET /api/user/history/146 HTTP/1.1" 200 -
+2026-05-01 12:18:42,754 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:42] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
+2026-05-01 12:18:48,469 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:48] "POST /api/upload/preprocess HTTP/1.1" 200 -
+2026-05-01 12:18:52,752 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:52] "POST /api/ocr/process HTTP/1.1" 200 -
+2026-05-01 12:18:52,778 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:52] "POST /api/upload/save-record HTTP/1.1" 200 -
+2026-05-01 12:18:52,789 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:52] "GET /api/user/history?page=1&page_size=5 HTTP/1.1" 200 -
+2026-05-01 12:18:55,680 - werkzeug - INFO - 127.0.0.1 - - [01/May/2026 12:18:55] "GET /api/user/history/147 HTTP/1.1" 200 -

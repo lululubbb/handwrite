@@ -112,6 +112,7 @@
               <div class="tab-inner">
                 <div class="tab-desc">
                   根据识别文字的位置与段落关系自动还原原始笔记排版，支持手动编辑修正。
+                  <el-tag size="small" type="success" v-if="!editMode">已自动转换为简体中文</el-tag>
                 </div>
 
                 <!-- 编辑模式 -->

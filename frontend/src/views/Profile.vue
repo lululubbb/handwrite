@@ -5,12 +5,12 @@
       <el-aside width="250px" class="sidebar">
         <Sidebar />
       </el-aside>
-      
+
       <!-- 主内容区 -->
       <el-main class="main-content">
         <div class="profile-section">
           <h2>个人中心</h2>
-          
+
           <el-tabs v-model="activeTab">
             <!-- 个人信息 -->
             <el-tab-pane label="个人信息" name="info">
@@ -20,7 +20,7 @@
                     <span>用户信息</span>
                   </div>
                 </template>
-                
+
                 <el-descriptions :column="2" border>
                   <el-descriptions-item label="用户名">
                     {{ user?.username || '未知' }}
@@ -45,14 +45,14 @@
                     {{ formatDate(user?.last_login) }}
                   </el-descriptions-item>
                 </el-descriptions>
-                
+
                 <div class="profile-actions">
                   <el-button type="primary" @click="editInfo">编辑信息</el-button>
                   <el-button @click="showChangePassword">修改密码</el-button>
                 </div>
               </el-card>
             </el-tab-pane>
-            
+
             <!-- 历史记录 -->
             <el-tab-pane label="历史记录" name="history">
               <el-card class="history-card" shadow="hover">
@@ -68,14 +68,16 @@
                     />
                   </div>
                 </template>
-                
+
+                <!-- 表格本身支持滚动 -->
                 <el-table
                   v-loading="loading"
                   :data="historyData"
                   stripe
                   style="width: 100%"
+                  max-height="460"
                 >
-                  <el-table-column prop="original_filename" label="文件名" width="250" />
+                  <el-table-column prop="original_filename" label="文件名" width="250" show-overflow-tooltip />
                   <el-table-column prop="upload_time" label="上传时间" width="180" />
                   <el-table-column prop="character_count" label="字符数" width="100" />
                   <el-table-column prop="confidence" label="置信度" width="100">
@@ -90,24 +92,12 @@
                   </el-table-column>
                   <el-table-column label="操作" width="200" fixed="right">
                     <template #default="{ row }">
-                      <el-button
-                        type="primary"
-                        link
-                        @click="viewRecord(row.id)"
-                      >
-                        查看
-                      </el-button>
-                      <el-button
-                        type="primary"
-                        link
-                        @click="downloadRecord(row)"
-                      >
-                        下载
-                      </el-button>
+                      <el-button type="primary" link @click="viewRecord(row.id)">查看</el-button>
+                      <el-button type="primary" link @click="downloadRecord(row)">下载</el-button>
                     </template>
                   </el-table-column>
                 </el-table>
-                
+
                 <el-pagination
                   v-model:current-page="pagination.page"
                   v-model:page-size="pagination.page_size"
@@ -125,7 +115,7 @@
         </div>
       </el-main>
     </el-container>
-    
+
     <!-- 编辑信息对话框 -->
     <el-dialog
       v-model="editDialogVisible"
@@ -146,7 +136,7 @@
         <el-button type="primary" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
-    
+
     <!-- 修改密码对话框 -->
     <el-dialog
       v-model="passwordDialogVisible"
@@ -155,26 +145,14 @@
       @close="handlePasswordClose"
     >
       <el-form :model="passwordForm" label-width="100px">
-        <el-form-item label="原密码" prop="oldPassword">
-          <el-input
-            v-model="passwordForm.oldPassword"
-            type="password"
-            show-password
-          />
+        <el-form-item label="原密码">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password />
         </el-form-item>
-        <el-form-item label="新密码" prop="newPassword">
-          <el-input
-            v-model="passwordForm.newPassword"
-            type="password"
-            show-password
-          />
+        <el-form-item label="新密码">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password />
         </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input
-            v-model="passwordForm.confirmPassword"
-            type="password"
-            show-password
-          />
+        <el-form-item label="确认密码">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -196,58 +174,29 @@ import Sidebar from '@/components/Sidebar.vue'
 const userStore = useUserStore()
 const router = useRouter()
 
-// 激活的标签页
 const activeTab = ref('info')
-
-// 用户信息
 const user = computed(() => userStore.user)
 
-// 编辑对话框
 const editDialogVisible = ref(false)
-const editForm = reactive({
-  username: '',
-  email: ''
-})
+const editForm = reactive({ username: '', email: '' })
 
-// 修改密码对话框
 const passwordDialogVisible = ref(false)
-const passwordForm = reactive({
-  oldPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
+const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
-// 历史记录
 const historyData = ref([])
 const loading = ref(false)
-const pagination = reactive({
-  page: 1,
-  page_size: 10,
-  total: 0
-})
+const pagination = reactive({ page: 1, page_size: 10, total: 0 })
 const searchText = ref('')
 
-// 获取历史记录
 const getHistory = async () => {
-  if (!user.value?.id) {
-    ElMessage.error('请先登录')
-    router.push('/login')
-    return
-  }
-
+  if (!user.value?.id) { ElMessage.error('请先登录'); router.push('/login'); return }
   loading.value = true
   try {
     const response = await fetch(
       `/api/user/history?page=${pagination.page}&page_size=${pagination.page_size}`,
-      {
-        headers: {
-          'X-User-ID': user.value.id,
-          'Authorization': userStore.token || ''
-        }
-      }
+      { headers: { 'X-User-ID': user.value.id, 'Authorization': userStore.token || '' } }
     )
     const data = await response.json()
-    
     if (data.status === 'success') {
       historyData.value = data.data.records
       pagination.total = data.data.total
@@ -261,34 +210,19 @@ const getHistory = async () => {
   }
 }
 
-// 分页变化
-const handleSizeChange = () => {
-  pagination.page = 1
-  getHistory()
-}
+const handleSizeChange = () => { pagination.page = 1; getHistory() }
+const handlePageChange = () => { getHistory() }
 
-const handlePageChange = () => {
-  getHistory()
-}
-
-// 编辑信息
 const editInfo = () => {
   if (!user.value) return
   editForm.username = user.value.username || ''
   editForm.email = user.value.email || ''
   editDialogVisible.value = true
 }
-
-const handleEditClose = () => {
-  editForm.username = ''
-  editForm.email = ''
-}
-
+const handleEditClose = () => { editForm.username = ''; editForm.email = '' }
 const saveEdit = async () => {
   try {
-    await userStore.updateProfile({
-      email: editForm.email
-    })
+    await userStore.updateProfile({ email: editForm.email })
     editDialogVisible.value = false
     ElMessage.success('信息更新成功')
   } catch (error) {
@@ -296,33 +230,21 @@ const saveEdit = async () => {
   }
 }
 
-// 显示修改密码对话框
-const showChangePassword = () => {
-  passwordDialogVisible.value = true
-}
-
+const showChangePassword = () => { passwordDialogVisible.value = true }
 const handlePasswordClose = () => {
   passwordForm.oldPassword = ''
   passwordForm.newPassword = ''
   passwordForm.confirmPassword = ''
 }
-
-// 保存密码
 const savePassword = async () => {
   if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-    ElMessage.error('请填写完整密码信息')
-    return
+    ElMessage.error('请填写完整密码信息'); return
   }
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    ElMessage.error('两次输入的密码不一致')
-    return
+    ElMessage.error('两次输入的密码不一致'); return
   }
-  
   try {
-    await userStore.changePassword(
-      passwordForm.oldPassword,
-      passwordForm.newPassword
-    )
+    await userStore.changePassword(passwordForm.oldPassword, passwordForm.newPassword)
     passwordDialogVisible.value = false
     ElMessage.success('密码修改成功')
   } catch (error) {
@@ -330,18 +252,10 @@ const savePassword = async () => {
   }
 }
 
-// 查看记录
-const viewRecord = (recordId) => {
-  router.push(`/result/${recordId}`)
-}
-
-// 下载记录
+const viewRecord = (recordId) => router.push(`/result/${recordId}`)
 const downloadRecord = (record) => {
   try {
-    if (!record?.formatted_text) {
-      ElMessage.warning('没有可下载的文本')
-      return
-    }
+    if (!record?.formatted_text) { ElMessage.warning('没有可下载的文本'); return }
     const blob = new Blob([record.formatted_text], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -357,13 +271,8 @@ const downloadRecord = (record) => {
   }
 }
 
-// 组件挂载时获取用户信息和历史记录
 onMounted(() => {
-  if (!user.value) {
-    ElMessage.error('请先登录')
-    router.push('/login')
-    return
-  }
+  if (!user.value) { ElMessage.error('请先登录'); router.push('/login'); return }
   getHistory()
 })
 </script>
@@ -379,40 +288,13 @@ onMounted(() => {
   color: #fff;
 }
 
-.sidebar-header {
-  padding: 20px;
-  text-align: center;
-  border-bottom: 1px solid #4b5d75;
-}
-
-.sidebar-header h3 {
-  font-size: 16px;
-  font-weight: normal;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-menu {
-  border-right: none;
-}
-
-.sidebar-menu :deep(.el-menu-item),
-.sidebar-menu :deep(.el-sub-menu__title) {
-  color: #bfcbd9;
-}
-
-.sidebar-menu :deep(.el-menu-item.is-active),
-.sidebar-menu :deep(.el-menu-item:hover),
-.sidebar-menu :deep(.el-sub-menu__title:hover) {
-  background: #2b3a4e;
-  color: #fff;
-}
-
+/* 主内容区添加滚动条 */
 .main-content {
   background: #f5f7fa;
   padding: 20px;
-  overflow-y: auto;
+  overflow-y: auto;   /* ← 垂直滚动条 */
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .profile-section {

@@ -5,20 +5,20 @@
       <el-aside width="250px" class="sidebar">
         <Sidebar/>
       </el-aside>
-      
+
       <!-- 主内容区 -->
       <el-main class="main-content">
         <div class="welcome-section">
           <h2>欢迎使用智能手写笔记转录系统</h2>
           <p class="subtitle">Handwritten Note Transcription System</p>
-          
+
           <el-card class="stats-card" shadow="hover">
             <template #header>
               <div class="stats-header">
                 <span>系统统计</span>
               </div>
             </template>
-            
+
             <el-row :gutter="20">
               <el-col :span="8">
                 <div class="stat-item">
@@ -26,14 +26,14 @@
                   <div class="stat-label">总上传次数</div>
                 </div>
               </el-col>
-              
+
               <el-col :span="8">
                 <div class="stat-item">
                   <div class="stat-value">{{ user?.total_characters || 0 }}</div>
                   <div class="stat-label">总识别字符数</div>
                 </div>
               </el-col>
-              
+
               <el-col :span="8">
                 <div class="stat-item">
                   <div class="stat-value">{{ formatDate(user?.last_login) }}</div>
@@ -43,10 +43,10 @@
             </el-row>
           </el-card>
         </div>
-        
+
         <div class="features-section">
           <h3>系统功能</h3>
-          
+
           <el-row :gutter="20">
             <el-col :span="8">
               <el-card class="feature-card" shadow="hover">
@@ -57,7 +57,7 @@
                 <p>支持JPG/PNG格式图片上传，自动预处理</p>
               </el-card>
             </el-col>
-            
+
             <el-col :span="8">
               <el-card class="feature-card" shadow="hover">
                 <div class="feature-icon">
@@ -67,7 +67,7 @@
                 <p>基于PaddleOCR-VL模型，高精度中文手写识别</p>
               </el-card>
             </el-col>
-            
+
             <el-col :span="8">
               <el-card class="feature-card" shadow="hover">
                 <div class="feature-icon">
@@ -87,7 +87,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { 
+import {
   Picture,
   Search,
   Document
@@ -96,8 +96,6 @@ import { formatDate } from '@/utils/common'
 import Sidebar from '@/components/Sidebar.vue'
 
 const userStore = useUserStore()
-
-// 获取用户信息
 const user = computed(() => userStore.user)
 </script>
 
@@ -112,40 +110,13 @@ const user = computed(() => userStore.user)
   color: #fff;
 }
 
-.sidebar-header {
-  padding: 20px;
-  text-align: center;
-  border-bottom: 1px solid #4b5d75;
-}
-
-.sidebar-header h3 {
-  font-size: 16px;
-  font-weight: normal;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-menu {
-  border-right: none;
-}
-
-.sidebar-menu :deep(.el-menu-item),
-.sidebar-menu :deep(.el-sub-menu__title) {
-  color: #e4e7ed;
-}
-
-.sidebar-menu :deep(.el-menu-item.is-active),
-.sidebar-menu :deep(.el-menu-item:hover),
-.sidebar-menu :deep(.el-sub-menu__title:hover) {
-  background: #2b3a4e;
-  color: #fff;
-}
-
+/* 主内容区添加滚动条 */
 .main-content {
   background: #f5f7fa;
   padding: 20px;
-  overflow-y: auto;
+  overflow-y: auto;   /* ← 垂直滚动条 */
+  height: 100vh;
+  box-sizing: border-box;
 }
 
 .welcome-section {
