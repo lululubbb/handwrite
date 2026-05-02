@@ -12,6 +12,7 @@ import * as ElIcons from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import { useUserStore } from '@/stores/user'
 
 // 创建Vue应用实例
 const app = createApp(App)
@@ -29,5 +30,9 @@ app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
 
-// 挂载应用
-app.mount('#app')
+// 在挂载前尝试从 token 恢复用户信息（如果有）
+const userStore = useUserStore(pinia)
+userStore.initFromToken().finally(() => {
+  // 无论成功与否均继续挂载应用
+  app.mount('#app')
+})

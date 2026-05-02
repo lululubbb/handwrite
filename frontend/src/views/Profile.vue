@@ -297,6 +297,24 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
 .profile-section {
   max-width: 1000px;
   margin: 0 auto;

@@ -29,7 +29,9 @@
         <el-icon><Setting /></el-icon>
         <template #title>管理员面板</template>
       </el-menu-item>
-      <el-menu-item index="/logout" @click="handleLogout">
+
+      <!-- 修复在这里：加了 .prevent -->
+    <el-menu-item @click="handleLogout">
         <el-icon><SwitchButton /></el-icon>
         <template #title>退出登录</template>
       </el-menu-item>
@@ -49,13 +51,16 @@ const route = useRoute()
 const userStore = useUserStore()
 const user = computed(() => userStore.user)
 
-// 当前路径，用于高亮菜单
 const currentPath = computed(() => {
   return route.path
 })
 
-// 退出登录
-const handleLogout = () => {
+const handleLogout = (e) => {
+  // 如果需要，可以手动失焦防止 CSS 状态残留
+  if (e && e.currentTarget) {
+    e.currentTarget.blur();
+  }
+
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -65,7 +70,9 @@ const handleLogout = () => {
     ElMessage.success('已退出登录')
     router.push('/login')
   }).catch(() => {
-    // 取消退出
+    // 这里不需要做任何操作，因为 currentPath 是响应式的
+    // 由于没有设置 index="logout"，菜单的高亮会停留在之前的路由位置
+    console.log('用户取消退出')
   })
 }
 </script>

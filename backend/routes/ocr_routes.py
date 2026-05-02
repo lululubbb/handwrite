@@ -141,8 +141,11 @@ def recognize_image():
         # 2. 繁体转简体处理
         full_markdown = convert_text_block(full_markdown_raw)
 
+        # 2.1 终极清理：去掉所有 HTML 标签与图片占位（防止把公章/图片返回前端）
+        cleaned_markdown = clean_markdown_content(full_markdown)
+
         # 3. 生成纯文本预览（去掉表格符号）
-        plain_text = markdown_to_plain_text(full_markdown)
+        plain_text = markdown_to_plain_text(cleaned_markdown)
         plain_text = convert_text_block(plain_text)
 
         # 4. 拆分文本行（适配前端 raw_ocr_result 字段）
@@ -165,13 +168,21 @@ def recognize_image():
         total_char = len(plain_text.replace("\n", "").replace(" ", ""))
         cost_time = round(time.time() - start, 2)
 
+        # 计算平均置信度（基于每行的 confidence）
+        avg_conf = 0.0
+        if text_lines:
+            try:
+                avg_conf = sum([t.get('confidence', 0.0) for t in text_lines]) / len(text_lines)
+            except Exception:
+                avg_conf = 0.0
+
         return jsonify(
             status="success", code=200, message="识别成功",
             data={
-                "processed_text": full_markdown,
+                "processed_text": cleaned_markdown,
                 "statistics": {
                     "total_characters": total_char,
-                    "average_confidence": 0.96,
+                    "average_confidence": round(avg_conf, 4),
                     "processing_time": cost_time
                 },
                 "raw_ocr_result": {"text_lines": text_lines},

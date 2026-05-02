@@ -370,6 +370,24 @@ onMounted(() => {
   padding: 24px;
   overflow-y: auto;
 }
+
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
 .stats-section { max-width: 1100px; margin: 0 auto; }
 .page-header { margin-bottom: 24px; }
 .page-title { font-size: 22px; font-weight: 700; color: #1a1a2e; margin: 0 0 6px; }

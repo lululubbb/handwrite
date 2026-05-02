@@ -107,6 +107,20 @@
           <!-- 主内容Tabs -->
           <el-tabs v-else v-model="activeTab" class="result-tabs" type="border-card">
 
+            <!-- ===== Tab0: 原始图片 ===== -->
+            <el-tab-pane name="original-image" label="🖼️ 原始图片">
+              <div class="tab-inner">
+                <div class="tab-desc">
+                  查看上传的原始手写笔记图片
+                </div>
+                <div v-if="originalImageUrl" class="image-viewer-container">
+                  <img :src="originalImageUrl" class="full-image" alt="原始图片" @click="showImageModal(originalImageUrl)" />
+                  <p class="image-hint">点击图片可查看大图</p>
+                </div>
+                <el-empty v-else description="暂无原始图片" />
+              </div>
+            </el-tab-pane>
+
             <!-- ===== Tab1: 排版还原结果 ===== -->
             <el-tab-pane name="formatted" label="📄 排版还原文本">
               <div class="tab-inner">
@@ -115,7 +129,7 @@
                   <el-tag size="small" type="success" v-if="!editMode">已自动转换为简体中文</el-tag>
                 </div>
 
-                <!-- 编辑模式 -->
+                <!-- 编辑模式 - 全宽 -->
                 <div v-if="editMode" class="edit-area">
                   <div class="edit-toolbar">
                     <span class="edit-hint"><el-icon><EditPen /></el-icon> 编辑模式已开启，直接修改文本</span>
@@ -136,37 +150,65 @@
                   </div>
                 </div>
 
-                <!-- 展示模式 -->
+                <!-- 展示模式 - 左图右文分栏 -->
                 <div v-else class="formatted-display">
-                  <div class="formatted-header">
-                    <el-tag size="small" type="success">格式化文本</el-tag>
-                    <el-tag size="small" type="info" class="ml-8">共 {{ formattedText.length }} 字符</el-tag>
-                  </div>
-                  <div class="formatted-content" v-if="formattedText">
-                    <div class="formatted-pre markdown-body" v-html="renderMarkdown(formattedText)"></div>
-                  </div>
-                  <el-empty v-else description="暂无排版文本" />
+                  <div class="display-wrapper">
+                    <!-- 左侧：原始图片 -->
+                    <div class="image-column">
+                      <div class="image-section">
+                        <div class="section-title">原始图片</div>
+                        <div v-if="originalImageUrl" class="image-box">
+                          <img :src="originalImageUrl" class="preview-image" alt="原始图片" @click="showImageModal(originalImageUrl)" />
+                        </div>
+                        <el-empty v-else :image-size="60" description="暂无图片" />
+                      </div>
+                    </div>
+                    
+                    <!-- 右侧：识别文本 -->
+                    <div class="text-column">
+                      <div class="formatted-header">
+                        <el-tag size="small" type="success">格式化文本</el-tag>
+                        <el-tag size="small" type="info" class="ml-8">共 {{ formattedText.length }} 字符</el-tag>
+                        <div class="zoom-controls" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+                          <el-button size="small" @click="zoomOut">-</el-button>
+                          <el-slider v-model="scale" :min="0.6" :max="1.6" :step="0.1" style="width:140px" />
+                          <el-button size="small" @click="zoomIn">+</el-button>
+                          <el-button size="small" @click="resetZoom">重置</el-button>
+                        </div>
+                      </div>
+                      <div class="formatted-content" v-if="formattedText">
+                        <div class="zoom-viewport">
+                          <div
+                            class="formatted-pre markdown-body"
+                            v-html="renderMarkdown(formattedText)"
+                            :style="{ transform: `scale(${scale})`, transformOrigin: 'top left' }"
+                          ></div>
+                        </div>
+                      </div>
+                      <el-empty v-else description="暂无排版文本" />
 
-                  <!-- 布局检测信息 -->
-                  <div v-if="layoutData && hasLayoutInfo" class="layout-summary">
-                    <div class="layout-title">检测到的排版元素</div>
-                    <el-row :gutter="12">
-                      <el-col :span="8" v-if="layoutData.headings && layoutData.headings.length">
-                        <el-tag type="warning" size="small">
-                          标题：{{ layoutData.headings.length }} 处
-                        </el-tag>
-                      </el-col>
-                      <el-col :span="8" v-if="layoutData.paragraphs && layoutData.paragraphs.length">
-                        <el-tag type="primary" size="small">
-                          段落：{{ layoutData.paragraphs.length }} 段
-                        </el-tag>
-                      </el-col>
-                      <el-col :span="8" v-if="layoutData.lists && layoutData.lists.length">
-                        <el-tag type="success" size="small">
-                          列表：{{ layoutData.lists.length }} 项
-                        </el-tag>
-                      </el-col>
-                    </el-row>
+                      <!-- 布局检测信息 -->
+                      <div v-if="layoutData && hasLayoutInfo" class="layout-summary">
+                        <div class="layout-title">检测到的排版元素</div>
+                        <el-row :gutter="12">
+                          <el-col :span="8" v-if="layoutData.headings && layoutData.headings.length">
+                            <el-tag type="warning" size="small">
+                              标题：{{ layoutData.headings.length }} 处
+                            </el-tag>
+                          </el-col>
+                          <el-col :span="8" v-if="layoutData.paragraphs && layoutData.paragraphs.length">
+                            <el-tag type="primary" size="small">
+                              段落：{{ layoutData.paragraphs.length }} 段
+                            </el-tag>
+                          </el-col>
+                          <el-col :span="8" v-if="layoutData.lists && layoutData.lists.length">
+                            <el-tag type="success" size="small">
+                              列表：{{ layoutData.lists.length }} 项
+                            </el-tag>
+                          </el-col>
+                        </el-row>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -326,6 +368,13 @@
             </el-tab-pane>
 
           </el-tabs>
+
+          <!-- 图片模态框 -->
+          <el-dialog v-model="imageModalVisible" title="图片查看" width="90%" center>
+            <div class="image-modal-container">
+              <img :src="modalImageUrl" class="modal-image" alt="图片预览" />
+            </div>
+          </el-dialog>
         </div>
       </el-main>
     </el-container>
@@ -352,6 +401,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const activeTab = ref('formatted')
 const editMode = ref(false)
+const imageModalVisible = ref(false)
+const modalImageUrl = ref('')
 
 // 数据
 const recordInfo = ref(null)
@@ -362,10 +413,65 @@ const layoutData = ref(null)
 const coordinatesData = ref([])
 const statsData = ref({})
 
-// 渲染 Markdown
+// 缩放（缩放值用于调整排版预览大小）
+const scale = ref(1.0)
+const zoomIn = () => { scale.value = Math.min(1.6, +(scale.value + 0.1).toFixed(2)) }
+const zoomOut = () => { scale.value = Math.max(0.6, +(scale.value - 0.1).toFixed(2)) }
+const resetZoom = () => { scale.value = 1.0 }
+
+// 清理并规范化 HTML：去掉 <img>、内联样式，规范表格（把可疑的表格转为纯文本）
+const sanitizeHtml = (html) => {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+
+  // 删除所有图片节点
+  doc.querySelectorAll('img').forEach(n => n.remove())
+
+  // 移除所有内联 style 属性与不安全属性
+  doc.querySelectorAll('*').forEach(el => {
+    el.removeAttribute('style')
+    el.removeAttribute('onmouseover')
+    el.removeAttribute('onclick')
+    el.removeAttribute('data-src')
+  })
+
+  // 规范化表格：检测可疑表格并降级为纯文本
+  doc.querySelectorAll('table').forEach(table => {
+    const rows = Array.from(table.querySelectorAll('tr'))
+    const rowCount = rows.length
+    let colCount = 0
+    let totalCellLen = 0
+    let cellCount = 0
+    rows.forEach(r => {
+      const cells = Array.from(r.querySelectorAll('th,td'))
+      colCount = Math.max(colCount, cells.length)
+      cells.forEach(c => { totalCellLen += (c.textContent || '').trim().length; cellCount += 1 })
+    })
+    const avgCellLen = cellCount ? totalCellLen / cellCount : 0
+
+    // 判定为可疑表格的条件：行数<=1 或 列数<=1 或 平均单元格内容非常长（疑似段落被识别为表格）
+    if (rowCount <= 1 || colCount <= 1 || avgCellLen > 80) {
+      // 用纯文本替换表格，保留单元格内容，用换行或分隔符分开
+      const texts = rows.map(r => Array.from(r.querySelectorAll('th,td')).map(c => c.textContent.trim()).filter(Boolean).join(' | ')).filter(Boolean)
+      const p = doc.createElement('pre')
+      p.textContent = texts.join('\n')
+      table.replaceWith(p)
+    } else {
+      // 正常表格：移除表格边框属性，统一渲染由 CSS 控制
+      table.removeAttribute('border')
+      table.removeAttribute('cellpadding')
+      table.removeAttribute('cellspacing')
+    }
+  })
+
+  return doc.body.innerHTML
+}
+
+// 渲染 Markdown（先生成 HTML，再清理与规范化）
 const renderMarkdown = (text) => {
   if (!text) return ''
-  return marked.parse(text)
+  const rawHtml = marked.parse(text)
+  return sanitizeHtml(rawHtml)
 }
 
 // 记录ID
@@ -387,6 +493,22 @@ const hasLayoutInfo = computed(() => {
   if (!layoutData.value) return false
   const ld = layoutData.value
   return (ld.headings?.length || 0) + (ld.paragraphs?.length || 0) + (ld.lists?.length || 0) > 0
+})
+
+// 原始图片URL - 从processed_filename推导出original磁盘文件名
+const originalImageUrl = computed(() => {
+  if (!recordInfo.value?.processed_filename) return ''
+  // processed_filename格式: "processed_abc12345.jpg"
+  // 推导original_filename: "original_abc12345.jpg"
+  const processedName = recordInfo.value.processed_filename
+  const originalName = processedName.replace('processed_', 'original_')
+  return `/api/upload/preview/${originalName}`
+})
+
+// 处理后图片URL
+const processedImageUrl = computed(() => {
+  if (!recordInfo.value?.processed_filename) return ''
+  return `/api/upload/preview/${recordInfo.value.processed_filename}`
 })
 
 // ---- 获取数据 ----
@@ -424,11 +546,19 @@ const getResultData = async () => {
       if (ocrObj) {
         // 兼容两种格式：旧格式(string[]) 和 新格式({text, confidence}[])
         const rawLines = ocrObj.text_lines || []
+        const estimateConfidence = (txt) => {
+          if (!txt) return 0.0
+          const s = String(txt).trim()
+          if (s.length < 3) return 0.88
+          if (/[?？□■]/.test(s)) return 0.75
+          return 0.96
+        }
+
         ocrLines.value = rawLines.map(item => {
           if (typeof item === 'string') {
-            return { text: item, confidence: 0.96 }
+            return { text: item, confidence: estimateConfidence(item) }
           }
-          return { text: item.text || '', confidence: item.confidence ?? 0.96 }
+          return { text: item.text || '', confidence: item.confidence ?? estimateConfidence(item.text) }
         }).filter(l => l.text.trim())
 
         coordinatesData.value = ocrObj.boxes || []
@@ -504,6 +634,12 @@ const getConfColor = (conf) => {
   return '#f56c6c'
 }
 
+// 显示图片模态框
+const showImageModal = (imageUrl) => {
+  modalImageUrl.value = imageUrl
+  imageModalVisible.value = true
+}
+
 const copyText = () => {
   const txt = editMode.value ? editableText.value : formattedText.value
   if (!txt) { ElMessage.warning('没有可复制的文本'); return }
@@ -564,6 +700,24 @@ onMounted(() => { getResultData() })
   background: #f0f2f5;
   padding: 20px 24px;
   overflow-y: auto;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
 }
 
 .result-section {
@@ -690,6 +844,24 @@ onMounted(() => { getResultData() })
   border-radius: 8px;
   padding: 20px 24px;
   min-height: 200px;
+  overflow-x: auto;
+}
+
+.formatted-content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.formatted-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.formatted-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+}
+
+.formatted-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
 }
 
 .formatted-pre {
@@ -705,8 +877,32 @@ onMounted(() => { getResultData() })
   padding-right: 8px;
 }
 
-.formatted-pre::-webkit-scrollbar { width: 6px; }
-.formatted-pre::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 3px; }
+/* 缩放视口，允许缩放内容并保持滚动 */
+.zoom-viewport {
+  width: 100%;
+  overflow: auto;
+}
+
+.markdown-body table { border-collapse: collapse; border-spacing: 0; }
+.markdown-body th, .markdown-body td { border: 1px solid #e5e7eb; }
+
+.formatted-pre::-webkit-scrollbar { 
+  width: 8px; 
+}
+
+.formatted-pre::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+
+.formatted-pre::-webkit-scrollbar-thumb { 
+  background: #c0c4cc; 
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.formatted-pre::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
 
 .layout-summary {
   margin-top: 16px;
@@ -739,6 +935,9 @@ onMounted(() => { getResultData() })
   background: #f9fafb;
   font-weight: bold;
 }
+.markdown-body table { border-spacing: 0; }
+.markdown-body table, .markdown-body th, .markdown-body td { border-collapse: collapse; }
+
 
 /* ===== 编辑模式 ===== */
 .edit-area {
@@ -798,7 +997,33 @@ onMounted(() => { getResultData() })
 .conf-dot.mid  { background: #e6a23c; }
 .conf-dot.low  { background: #f56c6c; }
 
-.lines-list { display: flex; flex-direction: column; gap: 8px; }
+.lines-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.lines-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lines-list::-webkit-scrollbar-track {
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.lines-list::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.lines-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a5;
+}
 
 .line-item {
   display: flex;
@@ -863,4 +1088,143 @@ onMounted(() => { getResultData() })
 
 /* ===== 记录信息 ===== */
 .record-desc { margin-top: 8px; }
+
+/* ===== 原始图片Tab ===== */
+.image-viewer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  min-height: 400px;
+}
+
+.full-image {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.full-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.image-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 12px;
+}
+
+/* ===== 左图右文分栏 ===== */
+.display-wrapper {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.image-column {
+  flex-shrink: 0;
+  width: 35%;
+  min-width: 300px;
+}
+
+.text-column {
+  flex: 1;
+  min-width: 400px;
+}
+
+.image-section {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e4e7ed;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.image-box {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3/4;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.preview-image:hover {
+  transform: scale(1.05);
+}
+
+/* ===== 图片模态框 ===== */
+.image-modal-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.modal-image {
+  max-width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1400px) {
+  .image-column {
+    width: 30%;
+    min-width: 250px;
+  }
+  
+  .text-column {
+    min-width: 350px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .display-wrapper {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .image-column {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .text-column {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .image-box {
+    aspect-ratio: 16/9;
+    max-height: 300px;
+  }
+}
 </style>

@@ -85,23 +85,49 @@ export const useUserStore = defineStore('user', {
     },
     
     // 获取用户信息
-    async getProfile() {
+    async getProfile(userId = null) {
       this.loading = true
-      
+
       try {
+        const id = userId || this.user?.id
+        if (!id) {
+          throw new Error('用户ID缺失')
+        }
+
         const response = await axios.get('/api/user/profile', {
           headers: {
-            'X-User-ID': this.user?.id
+            'X-User-ID': id
           }
         })
-        
+
         this.setUser(response.data.data)
         return response.data.data
       } catch (error) {
-        this.error = error.response?.data?.message || '获取用户信息失败'
+        this.error = error.response?.data?.message || error.message || '获取用户信息失败'
+        // 如果 token 无效或获取失败，清理本地登录状态
+        this.clearUser()
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    // 从 token 初始化用户（解析 token 中的 user id 并尝试拉取 profile）
+    async initFromToken() {
+      if (!this.token) return null
+      // token 格式: token_{userId}_{timestamp}
+      const parts = this.token.split('_')
+      if (parts.length < 2) {
+        this.clearUser()
+        return null
+      }
+      const id = parts[1]
+      try {
+        await this.getProfile(id)
+        this.isAuthenticated = true
+        return this.user
+      } catch (_) {
+        return null
       }
     },
     

@@ -7,6 +7,7 @@ import uuid
 import cv2
 import numpy as np
 from flask import Blueprint, request, jsonify, send_from_directory
+import re
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from models import db
@@ -113,6 +114,16 @@ def preprocess_image(image_path):
     return image
 
 
+def clean_markdown_content(md_text):
+    """删除所有 HTML 标签与图片占位，用于存储/返回给前端前的清理。"""
+    if not md_text:
+        return md_text
+    md_text = re.sub(r'<[^>]+>', '', md_text)
+    md_text = md_text.replace('Image', '').replace('image', '')
+    md_text = re.sub(r'\n+', '\n\n', md_text).strip()
+    return md_text
+
+
 @upload_bp.route('/check', methods=['GET'])
 def check_upload():
     """检查上传目录"""
@@ -163,10 +174,12 @@ def preprocess():
         file_ext = file_parts[1].lower() if len(file_parts) == 2 else 'jpg'
 
         unique_id = uuid.uuid4().hex[:8]
-        processed_filename = f'processed_{unique_id}.{file_ext}'
+        # 重要：使用统一的unique_id生成所有文件名
+        disk_original_filename = f'original_{unique_id}.{file_ext}'
+        disk_processed_filename = f'processed_{unique_id}.{file_ext}'
 
         # 保存原始文件
-        original_path = os.path.join(UPLOAD_FOLDER, f'original_{unique_id}.{file_ext}')
+        original_path = os.path.join(UPLOAD_FOLDER, disk_original_filename)
         file.save(original_path)
 
         # 图像预处理
@@ -180,17 +193,18 @@ def preprocess():
             }), 500
 
         # 保存预处理后的图像
-        processed_path = os.path.join(PROCESSED_FOLDER, processed_filename)
+        processed_path = os.path.join(PROCESSED_FOLDER, disk_processed_filename)
         cv2.imwrite(processed_path, processed_image)
 
-        # 返回预处理结果
+        # 返回预处理结果（返回真实的磁盘文件名）
         return jsonify({
             'status': 'success',
             'code': 200,
             'message': '预处理成功',
             'data': {
-                'original_filename': original_filename,
-                'processed_filename': processed_filename,
+                'display_filename': original_filename,
+                'original_filename': disk_original_filename,
+                'processed_filename': disk_processed_filename,
                 'original_path': original_path,
                 'processed_path': processed_path,
                 'preprocess_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -266,6 +280,9 @@ def save_record():
                 'message': '用户ID不能为空'
             }), 400
         
+        # 存储前清理 HTML/图片占位，避免把 <img> 等标签保存并回显
+        formatted_text = clean_markdown_content(formatted_text)
+
         # 创建历史记录
         record = HistoryRecord(
             user_id=user_id,

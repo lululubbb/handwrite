@@ -29,7 +29,7 @@
             <el-menu-item index="/admin/users">用户管理</el-menu-item>
             <el-menu-item index="/admin/records">记录管理</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="/login" @click="handleLogout">
+          <el-menu-item index="logout" @click="handleLogout">
             <el-icon><SwitchButton /></el-icon>
             <span>退出登录</span>
           </el-menu-item>

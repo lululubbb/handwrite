@@ -432,9 +432,17 @@ const handleUpload = async () => {
 
     // 构造 text_lines 数组（兼容新旧格式）
     const textLines = ocrResult.raw_ocr_result?.text_lines || []
+    const estimateConfidence = (txt) => {
+      if (!txt) return 0.0
+      const s = String(txt).trim()
+      if (s.length < 3) return 0.88
+      if (/[?？□■]/.test(s)) return 0.75
+      return 0.96
+    }
+
     const normalizedLines = textLines.map(item =>
       typeof item === 'string'
-        ? { text: item, confidence: 0.96 }
+        ? { text: item, confidence: estimateConfidence(item) }
         : item
     )
 
@@ -443,8 +451,9 @@ const handleUpload = async () => {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({
         user_id: user.value.id,
-        // 修复：使用用户原始文件名，而非 secure_filename 处理过的名字
+        // 保存用户上传的原始文件名（用于显示）
         original_filename: userOriginalFilename,
+        // 保存磁盘上的实际处理文件名（用于访问文件）
         processed_filename: uploadData.data.processed_filename,
         ocr_result: JSON.stringify({
           text_lines: normalizedLines,
@@ -624,6 +633,24 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
 .upload-section { max-width: 1100px; margin: 0 auto; }
 
 .page-header { margin-bottom: 24px; }
@@ -707,7 +734,26 @@ onMounted(() => {
 
 .search-area { padding: 0; }
 
-.search-results { margin-top: 16px; }
+.search-results { margin-top: 16px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+
+.search-results::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a5;
+}
 .search-result-title {
   font-size: 13px; color: #606266; margin-bottom: 10px;
 }
@@ -786,7 +832,26 @@ onMounted(() => {
   display: flex; justify-content: space-between; align-items: center;
 }
 
-.recent-list { display: flex; flex-direction: column; gap: 6px; }
+.recent-list { display: flex; flex-direction: column; gap: 6px; max-height: 450px; overflow-y: auto; padding-right: 4px; }
+
+.recent-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.recent-list::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.recent-list::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+
+.recent-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a5;
+}
 
 .recent-item {
   display: flex; align-items: center; gap: 10px;
